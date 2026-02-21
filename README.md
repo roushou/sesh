@@ -55,6 +55,24 @@ Add a host entry manually.
 | `--tags`           | Comma-separated tags                 |         |
 | `--provider`       | Provider label (e.g. `hetzner`)      |         |
 
+### `sesh edit <name>`
+
+Edit an existing host entry.
+
+| Flag                   | Description                                  | Default |
+| ---------------------- | -------------------------------------------- | ------- |
+| `--rename`             | Rename entry                                 |         |
+| `--host`               | Update hostname or IP                        |         |
+| `--user`               | Set SSH user                                 |         |
+| `--clear-user`         | Remove SSH user                              |         |
+| `--port`               | Update SSH port                              |         |
+| `--identity-file`      | Set private key path (`-i`)                  |         |
+| `--clear-identity-file`| Remove private key path                      |         |
+| `--tags`               | Comma-separated tags (replaces all tags)     |         |
+| `--clear-tags`         | Remove all tags                              |         |
+| `--provider`           | Set provider label                           |         |
+| `--clear-provider`     | Remove provider label                        |         |
+
 ### `sesh import`
 
 Import host entries from an SSH config file.

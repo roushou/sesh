@@ -1,6 +1,7 @@
 mod add;
 mod connect;
 mod doctor;
+mod edit;
 mod import;
 mod list;
 
@@ -8,6 +9,7 @@ pub use add::AddCommand;
 use clap::{Parser, Subcommand};
 pub use connect::ConnectCommand;
 pub use doctor::DoctorCommand;
+pub use edit::EditCommand;
 pub use import::ImportCommand;
 pub use list::ListCommand;
 
@@ -39,6 +41,8 @@ pub enum Command {
     Import(ImportCommand),
     /// Add a host entry manually
     Add(AddCommand),
+    /// Edit a stored host entry
+    Edit(EditCommand),
     /// List stored host entries
     List(ListCommand),
     /// Connect to a stored host, or auto-add and connect in one command
@@ -52,6 +56,7 @@ impl Command {
         match self {
             Self::Import(command) => command.execute(ctx),
             Self::Add(command) => command.execute(ctx),
+            Self::Edit(command) => command.execute(ctx),
             Self::List(command) => command.execute(ctx),
             Self::Connect(command) => command.execute(ctx),
             Self::Doctor(command) => command.execute(ctx),
