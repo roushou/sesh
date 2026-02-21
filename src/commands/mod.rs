@@ -41,7 +41,7 @@ pub enum Command {
     Add(AddCommand),
     /// List stored host entries
     List(ListCommand),
-    /// Connect to a stored host using system ssh
+    /// Connect to a stored host, or auto-add and connect in one command
     Connect(ConnectCommand),
     /// Run environment and host health checks
     Doctor(DoctorCommand),

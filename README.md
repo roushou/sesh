@@ -30,14 +30,14 @@ Download a prebuilt binary from the [releases page](https://github.com/roushou/s
 # Import hosts from your SSH config
 sesh import
 
-# Or add one manually
-sesh add web-1 --host 203.0.113.10 --user root --port 2222 --tags prod,web --provider hetzner
+# Connect (saves then connects)
+sesh connect web-1 --host 203.0.113.10 --user root --port 2222 --tags prod,web --provider hetzner
+
+# Connect to known host
+sesh connect web-1
 
 # List all hosts
 sesh list
-
-# Connect
-sesh connect web-1
 ```
 
 ## Commands
@@ -75,13 +75,25 @@ List stored host entries in a table.
 | `--tag`       | Filter by tag        |
 | `--provider`  | Filter by provider   |
 
-### `sesh connect <name>`
+### `sesh connect <target>`
 
-Connect to a stored host using system `ssh`.
+Connect using system `ssh`.
 
-| Flag          | Description                            |
-| ------------- | -------------------------------------- |
-| `--dry-run`   | Print the SSH command without running  |
+- If `<target>` matches a stored entry name, it connects directly.
+- If `<target>` does not exist, you can auto-add and save in one command:
+  - `sesh connect <name> --host <hostname>`
+  - `sesh connect user@host` (saved under `host` unless `--save-as` is set)
+
+| Flag            | Description                                                     | Default |
+| --------------- | --------------------------------------------------------------- | ------- |
+| `--host`        | Hostname/IP for one-command auto-add                            |         |
+| `--user`        | SSH user for auto-add                                           |         |
+| `--port`        | SSH port for auto-add                                           | `22`    |
+| `--identity-file`| Private key path for auto-add (`-i`)                          |         |
+| `--tags`        | Comma-separated tags for auto-add                               |         |
+| `--provider`    | Provider label for auto-add                                     |         |
+| `--save-as`     | Entry name to save auto-added destination under                 |         |
+| `--dry-run`     | Print the SSH command without running                           |         |
 
 ### `sesh doctor [name]`
 
