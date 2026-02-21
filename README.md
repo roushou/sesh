@@ -4,6 +4,12 @@ A fast, minimal SSH connection manager for VPS hosts. Store, tag, and connect to
 
 ## Installation
 
+### From crates.io
+
+```sh
+cargo install sesh-ssh
+```
+
 ### From source
 
 Requires the Rust nightly toolchain.
