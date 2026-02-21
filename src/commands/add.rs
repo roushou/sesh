@@ -1,7 +1,6 @@
 use clap::Args;
-use eyre::{Result, bail};
 
-use crate::{commands::CommandContext, storage::HostEntry};
+use crate::{commands::CommandContext, error::AppError, storage::HostEntry};
 
 #[derive(Args, Debug)]
 pub struct AddCommand {
@@ -28,12 +27,16 @@ pub struct AddCommand {
 }
 
 impl AddCommand {
-    pub fn execute(self, ctx: &CommandContext) -> Result<()> {
+    pub fn execute(self, ctx: &CommandContext) -> Result<(), AppError> {
         self.validate()?;
 
         let mut store = ctx.storage.load()?;
         if store.get_host(&self.name).is_some() {
-            bail!("host entry '{}' already exists", self.name);
+            return Err(AppError::AlreadyExists {
+                resource: "Host",
+                identifier: self.name,
+                hint: Some("Use a different name or remove the existing entry first.".to_string()),
+            });
         }
 
         store.hosts.push(self.into_entry(ctx));
@@ -43,9 +46,12 @@ impl AddCommand {
         Ok(())
     }
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self) -> Result<(), AppError> {
         if self.name.contains(' ') {
-            bail!("host entry name cannot contain spaces");
+            return Err(AppError::InvalidInput {
+                message: "Host name cannot contain spaces.".to_string(),
+                hint: Some("Use a slug like `web-1`.".to_string()),
+            });
         }
         Ok(())
     }

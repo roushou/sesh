@@ -1,10 +1,12 @@
 use std::{
     env, fs,
+    io::ErrorKind,
     path::{Path, PathBuf},
 };
 
-use eyre::{Result, WrapErr, bail};
 use serde::{Deserialize, Serialize};
+
+use crate::error::AppError;
 
 pub const DEFAULT_PORT: u16 = 22;
 const STORAGE_RELATIVE_PATH: &str = ".config/sesh/hosts.toml";
@@ -111,7 +113,7 @@ impl Storage {
         Self { home, path }
     }
 
-    pub fn new_default() -> Result<Self> {
+    pub fn new_default() -> Result<Self, AppError> {
         let home = find_home_dir()?;
         Ok(Self {
             home: home.clone(),
@@ -127,26 +129,70 @@ impl Storage {
         &self.home
     }
 
-    pub fn load(&self) -> Result<HostStore> {
+    pub fn load(&self) -> Result<HostStore, AppError> {
         if !self.path.exists() {
             return Ok(HostStore::default());
         }
 
-        let content = fs::read_to_string(&self.path)
-            .wrap_err_with(|| format!("failed reading {}", self.path.display()))?;
-        let store: HostStore = toml::from_str(&content)
-            .wrap_err_with(|| format!("invalid TOML in {}", self.path.display()))?;
+        let content = match fs::read_to_string(&self.path) {
+            Ok(content) => content,
+            Err(err) if err.kind() == ErrorKind::PermissionDenied => {
+                return Err(AppError::PermissionDenied {
+                    path: self.path.clone(),
+                    action: "read",
+                    hint: Some("Check file permissions.".to_string()),
+                });
+            }
+            Err(err) => {
+                return Err(AppError::Internal(eyre::eyre!(
+                    "failed reading {}: {}",
+                    self.path.display(),
+                    err
+                )));
+            }
+        };
+        let store: HostStore = toml::from_str(&content).map_err(|err| AppError::InvalidConfig {
+            path: self.path.clone(),
+            message: err.to_string(),
+            hint: Some("Fix the file or move it aside and retry.".to_string()),
+        })?;
         Ok(store)
     }
 
-    pub fn save(&self, store: &HostStore) -> Result<()> {
+    pub fn save(&self, store: &HostStore) -> Result<(), AppError> {
         if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent)
-                .wrap_err_with(|| format!("failed creating {}", parent.display()))?;
+            fs::create_dir_all(parent).map_err(|err| {
+                if err.kind() == ErrorKind::PermissionDenied {
+                    AppError::PermissionDenied {
+                        path: parent.to_path_buf(),
+                        action: "create directory",
+                        hint: Some("Check directory permissions.".to_string()),
+                    }
+                } else {
+                    AppError::Internal(eyre::eyre!("failed creating {}: {}", parent.display(), err))
+                }
+            })?;
         }
-        let body = toml::to_string_pretty(store).wrap_err("failed serializing host store")?;
-        fs::write(&self.path, body)
-            .wrap_err_with(|| format!("failed writing {}", self.path.display()))?;
+        let body = toml::to_string_pretty(store).map_err(|err| {
+            AppError::Internal(eyre::eyre!("failed serializing host store: {}", err))
+        })?;
+        match fs::write(&self.path, body) {
+            Ok(()) => {}
+            Err(err) if err.kind() == ErrorKind::PermissionDenied => {
+                return Err(AppError::PermissionDenied {
+                    path: self.path.clone(),
+                    action: "write",
+                    hint: Some("Check directory permissions.".to_string()),
+                });
+            }
+            Err(err) => {
+                return Err(AppError::Internal(eyre::eyre!(
+                    "failed writing {}: {}",
+                    self.path.display(),
+                    err
+                )));
+            }
+        }
         Ok(())
     }
 
@@ -161,7 +207,7 @@ impl Storage {
     }
 }
 
-fn find_home_dir() -> Result<PathBuf> {
+fn find_home_dir() -> Result<PathBuf, AppError> {
     if let Some(home) = env::var_os("HOME") {
         return Ok(PathBuf::from(home));
     }
@@ -175,5 +221,8 @@ fn find_home_dir() -> Result<PathBuf> {
         buf.push(path);
         return Ok(buf);
     }
-    bail!("could not determine home directory")
+    Err(AppError::InvalidInput {
+        message: "Could not determine home directory.".to_string(),
+        hint: Some("Set HOME (or USERPROFILE on Windows).".to_string()),
+    })
 }

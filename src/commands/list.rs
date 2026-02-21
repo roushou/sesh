@@ -1,7 +1,6 @@
 use clap::Args;
-use eyre::Result;
 
-use crate::commands::CommandContext;
+use crate::{commands::CommandContext, error::AppError};
 
 #[derive(Args, Debug)]
 pub struct ListCommand {
@@ -14,7 +13,7 @@ pub struct ListCommand {
 }
 
 impl ListCommand {
-    pub fn execute(self, ctx: &CommandContext) -> Result<()> {
+    pub fn execute(self, ctx: &CommandContext) -> Result<(), AppError> {
         let store = ctx.storage.load()?;
         let tag_filter = self.tag.map(|tag| tag.trim().to_ascii_lowercase());
         let provider_filter = self

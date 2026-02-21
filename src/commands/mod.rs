@@ -8,11 +8,10 @@ pub use add::AddCommand;
 use clap::{Parser, Subcommand};
 pub use connect::ConnectCommand;
 pub use doctor::DoctorCommand;
-use eyre::Result;
 pub use import::ImportCommand;
 pub use list::ListCommand;
 
-use crate::storage::Storage;
+use crate::{error::AppError, storage::Storage};
 
 #[derive(Debug)]
 pub struct CommandContext {
@@ -20,7 +19,7 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Result<Self, AppError> {
         Ok(Self {
             storage: Storage::new_default()?,
         })
@@ -49,7 +48,7 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn execute(self, ctx: &CommandContext) -> Result<()> {
+    pub fn execute(self, ctx: &CommandContext) -> Result<(), AppError> {
         match self {
             Self::Import(command) => command.execute(ctx),
             Self::Add(command) => command.execute(ctx),

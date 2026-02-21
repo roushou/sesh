@@ -1,10 +1,15 @@
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 
 use clap::Args;
-use eyre::{Result, WrapErr};
 
 use crate::{
     commands::CommandContext,
+    error::AppError,
     storage::{DEFAULT_PORT, HostEntry, HostStore},
 };
 
@@ -25,10 +30,9 @@ pub struct ImportCommand {
 }
 
 impl ImportCommand {
-    pub fn execute(self, ctx: &CommandContext) -> Result<()> {
+    pub fn execute(self, ctx: &CommandContext) -> Result<(), AppError> {
         let config_path = ctx.storage.expand_tilde(&self.file);
-        let content = fs::read_to_string(&config_path)
-            .wrap_err_with(|| format!("failed reading {}", config_path.display()))?;
+        let content = Self::read_config_file(&config_path)?;
 
         let importer = SshConfigImporter::new(
             ctx.storage.home_dir().to_path_buf(),
@@ -68,6 +72,32 @@ impl ImportCommand {
         tags.sort();
         tags.dedup();
         tags
+    }
+
+    fn read_config_file(path: &Path) -> Result<String, AppError> {
+        match fs::read_to_string(path) {
+            Ok(content) => Ok(content),
+            Err(err) if err.kind() == ErrorKind::NotFound => Err(AppError::NotFound {
+                resource: "SSH config",
+                identifier: path.display().to_string(),
+                hint: Some("Pass --file PATH or add hosts manually with `sesh add`.".to_string()),
+            }),
+            Err(err) if err.kind() == ErrorKind::PermissionDenied => {
+                Err(AppError::PermissionDenied {
+                    path: path.to_path_buf(),
+                    action: "read",
+                    hint: Some(
+                        "Check file permissions or run with an account that can read it."
+                            .to_string(),
+                    ),
+                })
+            }
+            Err(err) => Err(AppError::Internal(eyre::eyre!(
+                "failed reading {}: {}",
+                path.display(),
+                err
+            ))),
+        }
     }
 }
 

@@ -1,9 +1,8 @@
-use std::process::Command as ProcessCommand;
+use std::{io::ErrorKind, process::Command as ProcessCommand};
 
 use clap::Args;
-use eyre::{Result, WrapErr, eyre};
 
-use crate::commands::CommandContext;
+use crate::{commands::CommandContext, error::AppError};
 
 #[derive(Args, Debug)]
 pub struct ConnectCommand {
@@ -15,11 +14,15 @@ pub struct ConnectCommand {
 }
 
 impl ConnectCommand {
-    pub fn execute(self, ctx: &CommandContext) -> Result<()> {
+    pub fn execute(self, ctx: &CommandContext) -> Result<(), AppError> {
         let store = ctx.storage.load()?;
         let host = store
             .get_host(&self.name)
-            .ok_or_else(|| eyre!("unknown host '{}'", self.name))?;
+            .ok_or_else(|| AppError::NotFound {
+                resource: "Host",
+                identifier: self.name.clone(),
+                hint: Some("Run `sesh list` to see available names.".to_string()),
+            })?;
 
         let ssh_args = host.ssh_args();
         if self.dry_run {
@@ -27,10 +30,28 @@ impl ConnectCommand {
             return Ok(());
         }
 
-        let status = ProcessCommand::new("ssh")
-            .args(&ssh_args)
-            .status()
-            .wrap_err("failed to execute system ssh")?;
+        let status = match ProcessCommand::new("ssh").args(&ssh_args).status() {
+            Ok(status) => status,
+            Err(err) if err.kind() == ErrorKind::NotFound => {
+                return Err(AppError::MissingDependency {
+                    binary: "ssh",
+                    hint: Some("Install OpenSSH client and retry.".to_string()),
+                });
+            }
+            Err(err) if err.kind() == ErrorKind::PermissionDenied => {
+                return Err(AppError::PermissionDenied {
+                    path: "ssh".into(),
+                    action: "execute",
+                    hint: Some("Check your environment or PATH permissions.".to_string()),
+                });
+            }
+            Err(err) => {
+                return Err(AppError::Internal(eyre::eyre!(
+                    "failed to execute system ssh: {}",
+                    err
+                )));
+            }
+        };
         if !status.success() {
             std::process::exit(status.code().unwrap_or(1));
         }
