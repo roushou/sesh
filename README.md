@@ -73,6 +73,10 @@ Edit an existing host entry.
 | `--provider`           | Set provider label                           |         |
 | `--clear-provider`     | Remove provider label                        |         |
 
+### `sesh remove <name>`
+
+Remove an existing host entry.
+
 ### `sesh import`
 
 Import host entries from an SSH config file.

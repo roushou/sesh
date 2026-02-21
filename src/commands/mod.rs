@@ -4,6 +4,7 @@ mod doctor;
 mod edit;
 mod import;
 mod list;
+mod remove;
 
 pub use add::AddCommand;
 use clap::{Parser, Subcommand};
@@ -12,6 +13,7 @@ pub use doctor::DoctorCommand;
 pub use edit::EditCommand;
 pub use import::ImportCommand;
 pub use list::ListCommand;
+pub use remove::RemoveCommand;
 
 use crate::{error::AppError, storage::Storage};
 
@@ -43,6 +45,8 @@ pub enum Command {
     Add(AddCommand),
     /// Edit a stored host entry
     Edit(EditCommand),
+    /// Remove a stored host entry
+    Remove(RemoveCommand),
     /// List stored host entries
     List(ListCommand),
     /// Connect to a stored host, or auto-add and connect in one command
@@ -57,6 +61,7 @@ impl Command {
             Self::Import(command) => command.execute(ctx),
             Self::Add(command) => command.execute(ctx),
             Self::Edit(command) => command.execute(ctx),
+            Self::Remove(command) => command.execute(ctx),
             Self::List(command) => command.execute(ctx),
             Self::Connect(command) => command.execute(ctx),
             Self::Doctor(command) => command.execute(ctx),
